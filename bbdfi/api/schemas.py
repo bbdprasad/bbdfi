@@ -35,3 +35,13 @@ class ProfilePatch(BaseModel):
 
 class CommandIn(BaseModel):
     text: str = Field(max_length=100)
+
+
+class AiStrategyIn(BaseModel):
+    text: str = Field(min_length=3, max_length=500)
+
+
+class AiExplainIn(BaseModel):
+    rule_type: str
+    params: dict
+    days: int = Field(default=90, ge=5, le=500)

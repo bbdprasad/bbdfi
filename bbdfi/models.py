@@ -96,3 +96,13 @@ class EquitySnapshot(Base):
     profile_id: Mapped[str] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True)
     date: Mapped[date] = mapped_column(Date, primary_key=True)
     equity: Mapped[float] = mapped_column(Float)
+
+
+class AiUsage(Base):
+    """AI requests per profile per day, for the free-tier daily cap."""
+
+    __tablename__ = "ai_usage"
+
+    profile_id: Mapped[str] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)

@@ -5,9 +5,10 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from bbdfi import ai
 from bbdfi.analytics import market as market_analytics
 from bbdfi.analytics.portfolio import analytics as portfolio_analytics
-from bbdfi.api.schemas import BacktestIn, CommandIn, OrderIn, ProfilePatch, StrategyIn, StrategyPatch
+from bbdfi.api.schemas import AiExplainIn, AiStrategyIn, BacktestIn, CommandIn, OrderIn, ProfilePatch, StrategyIn, StrategyPatch
 from bbdfi.auth import current_profile
 from bbdfi.commands import parse as parse_command
 from bbdfi.config import Settings, get_settings
@@ -66,7 +67,7 @@ def _order_out(order: Order, names: dict[str, str]) -> dict:
 @router.get("/config")
 def config(settings: Settings = Depends(get_settings)):
     return {"auth_mode": settings.resolved_auth_mode, "supabase_url": settings.supabase_url,
-            "supabase_anon_key": settings.supabase_anon_key}
+            "supabase_anon_key": settings.supabase_anon_key, "ai_enabled": settings.ai_enabled}
 
 
 @router.get("/market/status")
@@ -281,6 +282,39 @@ def run_backtest(body: BacktestIn, profile: Profile = Depends(current_profile), 
     rule = _rule_or_422(body.rule_type, body.params)
     _check_symbols(session, rule)
     return {"description": rule.describe(), **backtest(session, rule, body.days, profile.starting_cash)}
+
+
+# ---- AI -----------------------------------------------------------------
+
+def _ai_quota(session: Session, profile: Profile, settings: Settings) -> int:
+    if not settings.ai_enabled:
+        raise HTTPException(503, "AI features are not configured on this server.")
+    try:
+        return ai.use_quota(session, profile.id)
+    except ai.AiLimitReached as error:
+        raise HTTPException(429, str(error)) from error
+
+
+@router.post("/ai/strategy")
+def ai_strategy(body: AiStrategyIn, profile: Profile = Depends(current_profile), session: Session = Depends(get_session),
+                settings: Settings = Depends(get_settings)):
+    remaining = _ai_quota(session, profile, settings)
+    try:
+        return {**ai.draft_rule(session, body.text), "remaining_today": remaining}
+    except ai.AiError as error:
+        raise HTTPException(502, str(error)) from error
+
+
+@router.post("/ai/explain")
+def ai_explain(body: AiExplainIn, profile: Profile = Depends(current_profile), session: Session = Depends(get_session),
+               settings: Settings = Depends(get_settings)):
+    rule = _rule_or_422(body.rule_type, body.params)
+    _check_symbols(session, rule)
+    remaining = _ai_quota(session, profile, settings)
+    try:
+        return {**ai.explain_backtest(session, rule, body.days, profile.starting_cash), "remaining_today": remaining}
+    except ai.AiError as error:
+        raise HTTPException(502, str(error)) from error
 
 
 # ---- admin --------------------------------------------------------------

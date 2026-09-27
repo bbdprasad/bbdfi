@@ -27,9 +27,18 @@ class Settings(BaseSettings):
     # In dev mode, load labelled sample prices on startup when the database has no prices yet.
     seed_sample_on_empty: bool = True
 
+    # AI features (plain-English rule builder, backtest coach). Off when no key is set.
+    anthropic_api_key: str = ""
+    ai_model: str = "claude-opus-5"
+    ai_daily_limit: int = 20
+
     starting_cash: float = 1_000_000.0
     # "nifty50" keeps the database small; "all" stores every NSE EQ series stock.
     universe: str = "nifty50"
+
+    @property
+    def ai_enabled(self) -> bool:
+        return bool(self.anthropic_api_key)
 
     @property
     def resolved_auth_mode(self) -> str:

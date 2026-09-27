@@ -206,6 +206,15 @@
           <div><div class="panel-kicker">NEW RULE</div><h2 id="strategyDialogTitle">Build a strategy</h2></div>
           <button class="icon-button" type="button" data-close-dialog aria-label="Close"><i class="bi bi-x-lg"></i></button>
         </div>
+        <div class="ai-builder" id="aiBuilder" hidden>
+          <label class="form-label" for="aiText"><i class="bi bi-stars"></i> Describe your rule in your own words</label>
+          <div class="ai-input-row">
+            <textarea class="form-control" id="aiText" rows="2" maxlength="500" placeholder="When Nifty falls 1.5% in a day, buy 20 HDFC Bank. Hindi, Tamil and Hinglish work too."></textarea>
+            <button class="btn btn-dark ai-button" type="button" id="aiBuildButton"><i class="bi bi-stars"></i> Build</button>
+          </div>
+          <p class="ai-reply" id="aiReply" hidden></p>
+          <div class="ai-or"><span>or start from a template</span></div>
+        </div>
         <div class="template-row" id="templateRow" aria-label="Start from a template"></div>
         <div class="mb-3">
           <label class="form-label" for="strategyName">Name</label>

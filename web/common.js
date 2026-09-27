@@ -91,6 +91,7 @@ export async function setupAuth({ onSignedIn }) {
     $("#loginSent").textContent = `Check ${value} for your sign-in link.`;
     $("#loginSent").hidden = false;
   });
+  return auth.config;
 }
 
 export async function signOut() {

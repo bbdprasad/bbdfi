@@ -9,13 +9,14 @@ traders cheaply. Live data and news cost money, so they are gated on revenue.
 | Area | What exists |
 | --- | --- |
 | Workspace | `/terminal.html`: dark multi-panel terminal, command line with autocomplete and history, type-anywhere focus |
-| Commands | `<SYMBOL>`, `<SYMBOL> GP/DES`, `BUY 10 INFY`, `SELL ALL INFY`, `MOV`, `HMAP`, `PORT`, `BLOT`, `RULES`, `RULE`, `LB`, `HELP` |
+| Commands | `<SYMBOL>`, `<SYMBOL> GP/DES`, `BUY 10 INFY`, `SELL ALL INFY`, `MOV`, `HMAP`, `PORT`, `BLOT`, `RULES`, `RULE`, `RULE <idea>`, `LB`, `HELP` |
 | Charts | Candlesticks with volume, SMA 20/50/200, EMA 20, Bollinger Bands, RSI and MACD panes, 1M to 2Y ranges |
 | Security page | O/H/L/C, 52-week range, returns 1W to 1Y, 20-day and 1-year volatility, beta vs Nifty, RSI, distance from moving averages |
 | Market monitor | Sortable watchlist, gainers, losers, most active by turnover, advance/decline and 52-week highs/lows |
 | Heatmap | Nifty 50 by sector, tile size by turnover, colour by change |
 | Portfolio | Equity, realized and unrealized P&L, win rate, Sharpe, volatility, max drawdown, beta, sector exposure |
-| Strategies | Rule builder with a 90-day backtest, daily engine, 7-day leaderboard |
+| Strategies | Rule builder with a 90-day backtest and buy-and-hold benchmark, daily engine, 7-day leaderboard |
+| AI | Describe a rule in English, Hindi, Tamil or Hinglish and get a validated rule; AI explanation of backtests with nearby-setting checks; `RULE <idea>` in the terminal |
 
 ## Next, free data (no new cost)
 

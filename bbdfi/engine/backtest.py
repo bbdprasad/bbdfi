@@ -6,7 +6,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from bbdfi.engine.fills import Rejected, fill
-from bbdfi.engine.rules import Rule, evaluate
+from bbdfi.engine.rules import Rule, evaluate, traded_symbol
 from bbdfi.marketdata.store import history, latest_date
 
 
@@ -51,6 +51,10 @@ def backtest(session: Session, rule: Rule, days: int = 90, cash: float = 1_000_0
         peak = max(peak, point["equity"])
         max_drawdown = max(max_drawdown, (peak - point["equity"]) / peak * 100)
     final = curve[-1]["equity"] if curve else starting_cash
+    # Buy-and-hold on the traded instrument over the same window, for comparison.
+    held_series = [bar for bar in bars.get(traded_symbol(rule), []) if test_days and test_days[0] <= bar.date <= test_days[-1]]
+    buy_and_hold = (round((held_series[-1].close / held_series[0].close - 1) * 100, 2)
+                    if len(held_series) >= 2 and held_series[0].close else None)
     return {
         "start": test_days[0].isoformat() if test_days else None,
         "end": test_days[-1].isoformat() if test_days else None,
@@ -59,6 +63,8 @@ def backtest(session: Session, rule: Rule, days: int = 90, cash: float = 1_000_0
         "final_equity": final,
         "return_pct": round((final / starting_cash - 1) * 100, 2),
         "max_drawdown_pct": round(max_drawdown, 2),
+        "buy_and_hold_symbol": traded_symbol(rule),
+        "buy_and_hold_pct": buy_and_hold,
         "trades": trades,
         "rejected": rejected,
         "equity_curve": curve,

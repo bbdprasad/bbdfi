@@ -331,3 +331,24 @@ h2 { font-size: 16px; line-height: 1.35; }
 @media (max-width: 620px) {
   .dialog-actions { flex-direction: column-reverse; }
 }
+
+/* AI rule builder and backtest coach */
+.ai-builder { margin-bottom: 14px; }
+.ai-builder .form-label i, .ai-button i { color: var(--amber); }
+.ai-input-row { align-items: stretch; display: flex; gap: 8px; }
+.ai-input-row textarea { font-size: 12px; resize: vertical; }
+.ai-button { align-items: center; display: flex; font-size: 12px; gap: 6px; white-space: nowrap; }
+.ai-reply { background: var(--mint); border-radius: 4px; color: var(--pine); font-size: 11px; line-height: 1.5; margin: 8px 0 0; padding: 8px 10px; }
+.ai-reply.warn { background: #fff6ea; color: #8a5a1e; }
+.ai-or { color: var(--muted); font-size: 10px; margin: 12px 0 2px; text-align: center; text-transform: uppercase; letter-spacing: .06em; }
+.ai-explain-button { background: none; border: 1px solid var(--line); border-radius: 4px; color: var(--pine); font-size: 11px; margin-top: 10px; padding: 5px 10px; }
+.ai-explain-button i { color: var(--amber); }
+.ai-explain-button:hover { border-color: var(--pine-light); }
+.ai-explain { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+.ai-explain strong { display: block; font-size: 12px; margin-bottom: 6px; }
+.ai-explain ul { margin: 0 0 6px; padding-left: 16px; }
+.ai-explain li { line-height: 1.5; margin-bottom: 3px; }
+.ai-variations { border-collapse: collapse; font-size: 10px; margin: 6px 0; width: 100%; }
+.ai-variations th, .ai-variations td { border-bottom: 1px solid var(--line); padding: 3px 4px; text-align: right; }
+.ai-variations th:first-child, .ai-variations td:first-child { text-align: left; }
+.ai-caution { color: var(--muted); font-size: 10px; margin: 6px 0 0; }

@@ -147,6 +147,10 @@ def parse_rule(rule_type: str, params: dict) -> Rule:
     return rule_adapter.validate_python({**params, "type": rule_type})
 
 
+def traded_symbol(rule: Rule) -> str:
+    return rule.trade_symbol if isinstance(rule, PrevCloseMove) else rule.symbol
+
+
 def evaluate(rule: Rule, bars: dict[str, list[BarLike]], day: date, positions: dict[str, tuple[int, float]]) -> list[Signal]:
     """`positions` maps symbol to (quantity, average_price)."""
     if isinstance(rule, TakeProfitStopLoss):

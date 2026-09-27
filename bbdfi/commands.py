@@ -21,6 +21,7 @@ HELP = [
     ("HMAP", "Sector heatmap"),
     ("PORT", "Portfolio risk: Sharpe, drawdown, beta, sector exposure"),
     ("RULES / RULE", "Your strategies / build a new one"),
+    ("RULE <idea>", "Draft a rule from plain words with AI"),
     ("BLOT", "Order blotter"),
     ("LB", "Weekly leaderboard"),
 ]
@@ -51,6 +52,11 @@ def parse(text: str, symbols: set[str]) -> dict:
         if result["action"] == "help":
             result["commands"] = [{"command": c, "does": d} for c, d in HELP]
         return result
+
+    # RULE <idea> or AI <idea> opens the builder with the idea drafted by AI.
+    idea = re.fullmatch(r"(?:RULE|AI)\s+(.+)", text, flags=re.IGNORECASE)
+    if idea:
+        return {"action": "new_rule", "text": idea.group(1).strip()}
 
     trade = re.fullmatch(r"(BUY|B|SELL|S)\s+(\d+|ALL)\s+(.+)", upper)
     if trade:

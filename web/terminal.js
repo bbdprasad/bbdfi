@@ -77,7 +77,7 @@ async function run(text) {
       say("Movers are in the right panel. Use UP, DOWN and ACTIVE to switch.");
       break;
     case "new_rule":
-      window.location.href = "./?build=1#strategies";
+      window.location.href = `./?build=1${result.text ? `&ai=${encodeURIComponent(result.text)}` : ""}#strategies`;
       break;
     case "help":
       setDock("help", result.commands);
