@@ -1,0 +1,29 @@
+name: Daily NSE close
+
+# Loads the day's NSE Bhavcopy into Supabase and runs every active strategy.
+# Turn on by adding the DATABASE_URL secret and setting the repository variable DAILY_JOB_ENABLED=true.
+on:
+  schedule:
+    - cron: "0 14 * * 1-5" # 19:30 IST, after NSE publishes the Bhavcopy
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Trading date (YYYY-MM-DD). Defaults to today."
+        required: false
+
+jobs:
+  daily:
+    if: ${{ vars.DAILY_JOB_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Ingest and run strategies
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          UNIVERSE: ${{ vars.UNIVERSE || 'nifty50' }}
+          RUN_DATE: ${{ inputs.date }}
+        run: python -m bbdfi.cli daily ${RUN_DATE:+--date "$RUN_DATE"}
