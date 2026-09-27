@@ -5,8 +5,12 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from bbdfi.api.schemas import BacktestIn, OrderIn, ProfilePatch, StrategyIn, StrategyPatch
+from bbdfi import ai
+from bbdfi.analytics import market as market_analytics
+from bbdfi.analytics.portfolio import analytics as portfolio_analytics
+from bbdfi.api.schemas import AiExplainIn, AiStrategyIn, BacktestIn, CommandIn, OrderIn, ProfilePatch, StrategyIn, StrategyPatch
 from bbdfi.auth import current_profile
+from bbdfi.commands import parse as parse_command
 from bbdfi.config import Settings, get_settings
 from bbdfi.db import get_session
 from bbdfi.engine.backtest import backtest
@@ -63,7 +67,7 @@ def _order_out(order: Order, names: dict[str, str]) -> dict:
 @router.get("/config")
 def config(settings: Settings = Depends(get_settings)):
     return {"auth_mode": settings.resolved_auth_mode, "supabase_url": settings.supabase_url,
-            "supabase_anon_key": settings.supabase_anon_key}
+            "supabase_anon_key": settings.supabase_anon_key, "ai_enabled": settings.ai_enabled}
 
 
 @router.get("/market/status")
@@ -102,6 +106,39 @@ def price_history(symbol: str, days: int = Query(default=90, ge=5, le=750), sess
         raise HTTPException(404, "No data for that instrument")
     return [{"date": bar.date.isoformat(), "open": bar.open, "high": bar.high, "low": bar.low,
              "close": bar.close} for bar in reversed(bars)]
+
+
+@router.get("/market/movers")
+def market_movers(session: Session = Depends(get_session)):
+    return market_analytics.movers(session)
+
+
+@router.get("/market/heatmap")
+def market_heatmap(session: Session = Depends(get_session)):
+    return market_analytics.heatmap(session)
+
+
+@router.get("/market/describe")
+def market_describe(symbol: str, session: Session = Depends(get_session)):
+    result = market_analytics.describe(session, symbol)
+    if result is None:
+        raise HTTPException(404, "No data for that instrument")
+    return result
+
+
+@router.get("/market/chart")
+def market_chart(symbol: str, days: int = Query(default=126, ge=5, le=750), indicators: str = "",
+                 session: Session = Depends(get_session)):
+    wanted = {name.strip().lower() for name in indicators.split(",") if name.strip()}
+    result = market_analytics.chart(session, symbol, days, wanted)
+    if result is None:
+        raise HTTPException(404, "No data for that instrument")
+    return result
+
+
+@router.post("/command")
+def command(body: CommandIn, session: Session = Depends(get_session)):
+    return parse_command(body.text, set(session.scalars(select(Instrument.symbol))))
 
 
 @router.get("/leaderboard")
@@ -160,6 +197,11 @@ def account(profile: Profile = Depends(current_profile), session: Session = Depe
     }
 
 
+@router.get("/account/analytics")
+def account_analytics(profile: Profile = Depends(current_profile), session: Session = Depends(get_session)):
+    return portfolio_analytics(session, profile)
+
+
 @router.get("/orders")
 def orders(limit: int = Query(default=50, ge=1, le=500), profile: Profile = Depends(current_profile),
            session: Session = Depends(get_session)):
@@ -175,6 +217,8 @@ def create_order(body: OrderIn, profile: Profile = Depends(current_profile), ses
                           .order_by(DailyBar.date.desc()).limit(1)).first()
     if bar is None:
         raise HTTPException(404, "No price for that instrument")
+    if body.side == "BUY" and body.quantity is None:
+        raise HTTPException(422, "Enter a quantity to buy")
     try:
         order = place_order(session, profile, body.symbol, body.side, body.quantity, bar.close, bar.date,
                             note=f"Filled at {bar.date:%d %b} close")
@@ -238,6 +282,39 @@ def run_backtest(body: BacktestIn, profile: Profile = Depends(current_profile), 
     rule = _rule_or_422(body.rule_type, body.params)
     _check_symbols(session, rule)
     return {"description": rule.describe(), **backtest(session, rule, body.days, profile.starting_cash)}
+
+
+# ---- AI -----------------------------------------------------------------
+
+def _ai_quota(session: Session, profile: Profile, settings: Settings) -> int:
+    if not settings.ai_enabled:
+        raise HTTPException(503, "AI features are not configured on this server.")
+    try:
+        return ai.use_quota(session, profile.id)
+    except ai.AiLimitReached as error:
+        raise HTTPException(429, str(error)) from error
+
+
+@router.post("/ai/strategy")
+def ai_strategy(body: AiStrategyIn, profile: Profile = Depends(current_profile), session: Session = Depends(get_session),
+                settings: Settings = Depends(get_settings)):
+    remaining = _ai_quota(session, profile, settings)
+    try:
+        return {**ai.draft_rule(session, body.text), "remaining_today": remaining}
+    except ai.AiError as error:
+        raise HTTPException(502, str(error)) from error
+
+
+@router.post("/ai/explain")
+def ai_explain(body: AiExplainIn, profile: Profile = Depends(current_profile), session: Session = Depends(get_session),
+               settings: Settings = Depends(get_settings)):
+    rule = _rule_or_422(body.rule_type, body.params)
+    _check_symbols(session, rule)
+    remaining = _ai_quota(session, profile, settings)
+    try:
+        return {**ai.explain_backtest(session, rule, body.days, profile.starting_cash), "remaining_today": remaining}
+    except ai.AiError as error:
+        raise HTTPException(502, str(error)) from error
 
 
 # ---- admin --------------------------------------------------------------

@@ -15,7 +15,8 @@ pip install -r requirements-dev.txt
 uvicorn bbdfi.main:app --reload
 ```
 
-Open <http://localhost:8000>. With no settings, the app uses a local SQLite file, loads clearly labelled
+Open <http://localhost:8000> for the dashboard, or <http://localhost:8000/terminal.html> for the
+Bloomberg-style terminal (type `HELP` in its command line). With no settings, the app uses a local SQLite file, loads clearly labelled
 sample prices, and lets you sign in with just a handle. Open a second browser with another handle to see
 the leaderboard move.
 
@@ -58,6 +59,23 @@ equity for the leaderboard. It is safe to run more than once. Two ways to schedu
 NSE sometimes blocks requests from cloud IP ranges. If the job loads 0 bars on a trading day, run it from
 a machine in India or switch to a paid data source.
 
+## AI rule builder and backtest coach
+
+Set `ANTHROPIC_API_KEY` to turn on two features in the strategy builder:
+
+- **Describe it in your own words.** Type an idea in English, Hindi, Tamil or Hinglish ("nifty 1.5% gire
+  to hdfc bank ke 20 share kharido"). Claude drafts one of the three rule types, the server validates it
+  with the same models the engine uses, fills in the form and runs the 90-day preview. Ideas the engine
+  cannot run yet get an explanation and the closest supported rule. In the terminal, `RULE <idea>` does
+  the same.
+- **Explain these results.** The server backtests the rule plus a few nearby settings and a buy-and-hold
+  benchmark, then Claude explains the numbers in plain words and flags small samples and results that
+  hang on one lucky setting. Claude only explains numbers the backtest computed; it never makes them up.
+
+Both are framed as education. The prompts forbid recommending securities or predicting prices. Each
+person gets `AI_DAILY_LIMIT` requests a day (default 20), counted in the `ai_usage` table, which keeps
+the API bill bounded. Without a key the AI buttons are hidden and everything else works as before.
+
 ## How it fits together
 
 | Path | What it does |
@@ -68,8 +86,11 @@ a machine in India or switch to a paid data source.
 | `bbdfi/engine/runner.py` | Daily run: evaluates active strategies once per market day and snapshots equity |
 | `bbdfi/engine/backtest.py` | Replays a rule over recent history for the "Preview" button |
 | `bbdfi/leaderboard.py` | 7-day return ranking |
+| `bbdfi/analytics/` | Indicators (SMA, EMA, Bollinger, RSI, MACD), movers, breadth, sector heatmap, portfolio risk |
+| `bbdfi/ai.py` | Plain-English rule drafting and the backtest coach (Claude API), with the daily limit |
+| `bbdfi/commands.py` | Parses terminal commands like `RELIANCE`, `BUY 10 INFY`, `MOV` |
 | `bbdfi/api/routes.py` | JSON API used by the front end |
-| `web/` | Dashboard and public leaderboard page |
+| `web/` | Dashboard, terminal and public leaderboard page (`common.js` holds shared API and sign-in code) |
 
 ## Rules and limits
 
@@ -79,6 +100,10 @@ a machine in India or switch to a paid data source.
 - A new or re-enabled strategy starts from the next market close, so it never trades on prices that
   were already known when it was switched on.
 - Every account starts with ₹10,00,000 of paper cash.
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the path toward a Bloomberg-style terminal.
 
 ## Not built yet
 

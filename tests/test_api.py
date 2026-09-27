@@ -53,3 +53,18 @@ def test_admin_requires_token(client):
 
 def test_leaderboard_is_public(client):
     assert client.get("/api/leaderboard").status_code == 200
+
+
+def test_terminal_endpoints(client, load):
+    seed(load)
+    assert client.post("/api/command", json={"text": "reliance"}).json()["symbol"] == "RELIANCE"
+    assert client.get("/api/market/movers").status_code == 200
+    assert client.get("/api/market/heatmap").status_code == 200
+    assert client.get("/api/market/describe", params={"symbol": "RELIANCE"}).json()["close"] == 1020
+    assert client.get("/api/market/chart", params={"symbol": "RELIANCE", "indicators": "sma20"}).status_code == 200
+    client.post("/api/orders", json={"symbol": "RELIANCE", "side": "BUY", "quantity": 10}, headers=auth("asha"))
+    assert client.post("/api/orders", json={"symbol": "RELIANCE", "side": "BUY"}, headers=auth("asha")).status_code == 422
+    sold = client.post("/api/orders", json={"symbol": "RELIANCE", "side": "SELL"}, headers=auth("asha"))
+    assert sold.status_code == 201 and sold.json()["quantity"] == 10
+    stats = client.get("/api/account/analytics", headers=auth("asha")).json()
+    assert stats["closed_trades"] == 1 and stats["realized_pnl"] == 0

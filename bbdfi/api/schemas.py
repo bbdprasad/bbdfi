@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field
 class OrderIn(BaseModel):
     symbol: str
     side: Literal["BUY", "SELL"]
-    quantity: int = Field(ge=1, le=100_000)
+    # None on a SELL closes the whole position.
+    quantity: int | None = Field(default=None, ge=1, le=100_000)
 
 
 class StrategyIn(BaseModel):
@@ -30,3 +31,17 @@ class BacktestIn(BaseModel):
 class ProfilePatch(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=80)
     handle: str | None = Field(default=None, pattern=r"^[a-z0-9_]{3,20}$")
+
+
+class CommandIn(BaseModel):
+    text: str = Field(max_length=100)
+
+
+class AiStrategyIn(BaseModel):
+    text: str = Field(min_length=3, max_length=500)
+
+
+class AiExplainIn(BaseModel):
+    rule_type: str
+    params: dict
+    days: int = Field(default=90, ge=5, le=500)

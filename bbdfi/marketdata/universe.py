@@ -21,3 +21,25 @@ NIFTY50 = [
 
 def wants_symbol(symbol: str, universe: str) -> bool:
     return universe == "all" or symbol in NIFTY50
+
+
+SECTORS = {
+    "Financials": ["AXISBANK", "BAJAJFINSV", "BAJFINANCE", "HDFCBANK", "HDFCLIFE", "ICICIBANK", "INDUSINDBK",
+                   "JIOFIN", "KOTAKBANK", "SBILIFE", "SBIN", "SHRIRAMFIN"],
+    "IT": ["HCLTECH", "INFY", "TCS", "TECHM", "WIPRO"],
+    "Energy & Power": ["RELIANCE", "ONGC", "NTPC", "POWERGRID", "COALINDIA"],
+    "Auto": ["BAJAJ-AUTO", "EICHERMOT", "HEROMOTOCO", "M&M", "MARUTI"],
+    "FMCG": ["HINDUNILVR", "ITC", "NESTLEIND", "TATACONSUM"],
+    "Healthcare": ["APOLLOHOSP", "CIPLA", "DRREDDY", "SUNPHARMA"],
+    "Metals & Mining": ["ADANIENT", "HINDALCO", "JSWSTEEL", "TATASTEEL"],
+    "Industrials": ["ADANIPORTS", "BEL", "GRASIM", "LT", "ULTRACEMCO"],
+    "Consumer": ["ASIANPAINT", "ETERNAL", "TITAN", "TRENT"],
+    "Telecom": ["BHARTIARTL"],
+}
+SECTOR_OF = {symbol: sector for sector, symbols in SECTORS.items() for symbol in symbols}
+
+
+def sector_of(symbol: str) -> str:
+    if symbol in INDICES:
+        return "Index"
+    return SECTOR_OF.get(symbol, "Other")

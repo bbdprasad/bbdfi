@@ -1,22 +1,9 @@
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
-
-const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const shortCurrency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
-const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
-const shortDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-const longDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-const signed = (value, digits = 2) => `${value > 0 ? "+" : ""}${Number(value).toFixed(digits)}%`;
-const tone = (value) => (value > 0 ? "positive" : value < 0 ? "negative" : "");
-const initials = (name) => (name || "?").split(/[\s_]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
-}
+import {
+  $, $$, ApiError, accessToken, api, currency, escapeHtml, hideLogin, initials, longDate, number, setupAuth,
+  shortCurrency, shortDate, showLogin, signOut, signed, tone,
+} from "./common.js";
 
 const state = {
-  config: null,
-  supabase: null,
   status: null,
   quotes: [],
   account: null,
@@ -25,91 +12,12 @@ const state = {
   leaderboard: null,
   chart: { view: "instrument", symbol: "NIFTY 50", range: 63, points: [], hover: null },
   tradeSide: "BUY",
+  aiEnabled: false,
 };
 
-// ---------------------------------------------------------------- API + auth
-
-const DEV_KEY = "bbdfi-dev-handle";
-
-function readDevHandle() {
-  try { return localStorage.getItem(DEV_KEY); } catch { return null; }
-}
-
-async function accessToken() {
-  if (state.config.auth_mode === "dev") {
-    const handle = readDevHandle();
-    return handle ? `dev:${handle}` : null;
-  }
-  const { data } = await state.supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
-class ApiError extends Error {}
-
-async function api(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
-  if (auth) {
-    const token = await accessToken();
-    if (!token) { showLogin(); throw new ApiError("Sign in required"); }
-    headers.Authorization = `Bearer ${token}`;
-  }
-  const response = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  if (response.status === 401 && auth) { showLogin(); throw new ApiError("Sign in required"); }
-  if (response.status === 204) return null;
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(typeof data.detail === "string" ? data.detail : "Something went wrong");
-  return data;
-}
-
-async function setupAuth() {
-  state.config = await api("/api/config", { auth: false });
-  if (state.config.auth_mode === "supabase") {
-    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-    state.supabase = createClient(state.config.supabase_url, state.config.supabase_anon_key);
-    state.supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") { hideLogin(); refreshAll(); }
-      if (event === "SIGNED_OUT") showLogin();
-    });
-  } else {
-    $("#loginLabel").textContent = "Pick a handle";
-    $("#loginInput").type = "text";
-    $("#loginInput").autocomplete = "username";
-    $("#loginInput").placeholder = "e.g. nifty_ninja";
-    $("#loginInput").pattern = "[a-z0-9_]{3,20}";
-    $("#loginInput").title = "3 to 20 lowercase letters, digits or _";
-    $("#loginButton").textContent = "Start paper trading";
-    $("#loginHint").textContent = "Local dev mode: no password needed. Connect Supabase to require real sign-in.";
-  }
-}
-
-function showLogin() { $("#loginScreen").hidden = false; }
-function hideLogin() { $("#loginScreen").hidden = true; }
-
-$("#loginForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const value = $("#loginInput").value.trim();
-  const errorBox = $("#loginError");
-  errorBox.hidden = true;
-  if (state.config.auth_mode === "dev") {
-    try { localStorage.setItem(DEV_KEY, value.toLowerCase()); } catch { /* storage blocked */ }
-    hideLogin();
-    refreshAll();
-    return;
-  }
-  const { error } = await state.supabase.auth.signInWithOtp({ email: value, options: { emailRedirectTo: window.location.origin } });
-  if (error) { errorBox.textContent = error.message; errorBox.hidden = false; return; }
-  $("#loginSent").textContent = `Check ${value} for your sign-in link.`;
-  $("#loginSent").hidden = false;
-});
-
 $("#signOutButton").addEventListener("click", async () => {
-  if (state.config.auth_mode === "dev") {
-    try { localStorage.removeItem(DEV_KEY); } catch { /* storage blocked */ }
-  } else {
-    await state.supabase.auth.signOut();
-  }
   $("#profileDialog").close();
-  showLogin();
+  await signOut();
 });
 
 // ---------------------------------------------------------------- data
@@ -585,6 +493,8 @@ function openStrategyBuilder(template = TEMPLATES[0]) {
   renderRuleFields(template.params);
   $("#strategyError").hidden = true;
   $("#backtestBox").hidden = true;
+  $("#aiBuilder").hidden = !state.aiEnabled;
+  aiReply("");
   if (!$("#strategyDialog").open) $("#strategyDialog").showModal();
 }
 
@@ -615,7 +525,9 @@ $("#previewButton").addEventListener("click", async () => {
       </div>
       <canvas class="backtest-curve" id="backtestCurve"></canvas>
       <div class="backtest-range">${result.start ? `${shortDate(result.start)} to ${shortDate(result.end)} with ${shortCurrency.format(result.starting_cash)} paper cash` : ""}${result.rejected ? ` · ${result.rejected} signals skipped for cash or holdings` : ""}</div>
-      ${trades ? `<ul class="backtest-trades">${trades}</ul>` : '<div class="backtest-range">This rule would not have traded in this period.</div>'}`;
+      ${result.buy_and_hold_pct != null ? `<div class="backtest-range">Buying and holding ${escapeHtml(result.buy_and_hold_symbol)} over the same days: <span class="${tone(result.buy_and_hold_pct)}">${signed(result.buy_and_hold_pct)}</span></div>` : ""}
+      ${trades ? `<ul class="backtest-trades">${trades}</ul>` : '<div class="backtest-range">This rule would not have traded in this period.</div>'}
+      ${state.aiEnabled ? '<button class="ai-explain-button" type="button" id="aiExplainButton"><i class="bi bi-stars"></i> Explain these results</button><div id="aiExplain"></div>' : ""}`;
     drawSparkline($("#backtestCurve"), result.equity_curve.map((point) => point.equity));
   } catch (error) {
     box.hidden = true;
@@ -624,6 +536,68 @@ $("#previewButton").addEventListener("click", async () => {
   } finally {
     button.disabled = false;
   }
+});
+
+// ---------------------------------------------------------------- AI builder and coach
+
+function aiReply(text, warn = false) {
+  const reply = $("#aiReply");
+  reply.textContent = text;
+  reply.classList.toggle("warn", warn);
+  reply.hidden = !text;
+}
+
+async function buildWithAi() {
+  const text = $("#aiText").value.trim();
+  if (text.length < 3) { aiReply("Describe the rule first, for example: buy 10 Infosys when it crosses its 50-day average.", true); return; }
+  const button = $("#aiBuildButton");
+  button.disabled = true;
+  aiReply("Drafting your rule...");
+  try {
+    const draft = await api("/api/ai/strategy", { method: "POST", body: { text } });
+    if (!draft.supported) {
+      aiReply([draft.reply, draft.problem].filter(Boolean).join(" "), true);
+      return;
+    }
+    $("#strategyName").value = draft.name || "My rule";
+    $("#ruleType").value = draft.rule_type;
+    renderRuleFields(draft.params);
+    aiReply(`${draft.reply} Check the fields below; ${draft.remaining_today} AI requests left today.`);
+    $("#previewButton").click();
+  } catch (error) {
+    aiReply(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function explainWithAi() {
+  const button = $("#aiExplainButton");
+  const target = $("#aiExplain");
+  button.disabled = true;
+  target.innerHTML = '<div class="ai-explain backtest-loading">Testing nearby settings and writing an explanation...</div>';
+  try {
+    const coach = await api("/api/ai/explain", { method: "POST", body: { rule_type: $("#ruleType").value, params: ruleParams(), days: 90 } });
+    const rows = coach.variations.map((row) => `<tr><td>${escapeHtml(row.variant)}</td><td class="${tone(row.return_pct)}">${signed(row.return_pct)}</td><td>${row.max_drawdown_pct.toFixed(2)}%</td><td>${row.trades}</td></tr>`).join("");
+    target.innerHTML = `<div class="ai-explain">
+        <strong>${escapeHtml(coach.headline)}</strong>
+        <ul>${coach.points.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}</ul>
+        <table class="ai-variations"><thead><tr><th>Setting</th><th>Return</th><th>Worst dip</th><th>Trades</th></tr></thead><tbody>${rows}</tbody></table>
+        <p class="ai-caution"><i class="bi bi-info-circle"></i> ${escapeHtml(coach.caution)} Educational simulation, not investment advice.</p>
+      </div>`;
+    button.remove();
+  } catch (error) {
+    target.innerHTML = `<p class="dialog-error">${escapeHtml(error.message)}</p>`;
+    button.disabled = false;
+  }
+}
+
+$("#aiBuildButton").addEventListener("click", buildWithAi);
+$("#aiText").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); buildWithAi(); }
+});
+$("#backtestBox").addEventListener("click", (event) => {
+  if (event.target.closest("#aiExplainButton")) explainWithAi();
 });
 
 function drawSparkline(canvas, values) {
@@ -734,7 +708,24 @@ setInterval(updateClock, 30000);
 // Prices change once a day and strategies fill after the evening job, so a light poll is enough.
 setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, 60000);
 
-setupAuth().then(refreshAll).catch((error) => {
+// The terminal's RULE command links here with ?build=1 (and &ai=<idea>) to open the strategy builder.
+let builderQueryHandled = false;
+function openBuilderFromQuery() {
+  const query = new URLSearchParams(window.location.search);
+  if (builderQueryHandled || !query.has("build") || !state.account) return;
+  builderQueryHandled = true;
+  openStrategyBuilder();
+  if (query.get("ai") && state.aiEnabled) {
+    $("#aiText").value = query.get("ai");
+    buildWithAi();
+  }
+}
+
+setupAuth({ onSignedIn: () => refreshAll().then(openBuilderFromQuery) }).then(async (config) => {
+  state.aiEnabled = Boolean(config?.ai_enabled);
+  await refreshAll();
+  openBuilderFromQuery();
+}).catch((error) => {
   console.error(error);
   showToast("Could not reach the BBDFi server.");
 });

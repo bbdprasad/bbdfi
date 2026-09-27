@@ -29,6 +29,7 @@
           <a class="nav-link" href="#positions"><i class="bi bi-briefcase"></i><span>Positions</span></a>
           <a class="nav-link" href="#activity"><i class="bi bi-arrow-left-right"></i><span>Activity</span></a>
           <a class="nav-link" href="#leaderboard"><i class="bi bi-trophy"></i><span>Leaderboard</span></a>
+          <a class="nav-link" href="terminal.html"><i class="bi bi-terminal"></i><span>Terminal</span></a>
         </nav>
 
         <div class="sidebar-bottom">
@@ -204,6 +205,15 @@
         <div class="dialog-heading">
           <div><div class="panel-kicker">NEW RULE</div><h2 id="strategyDialogTitle">Build a strategy</h2></div>
           <button class="icon-button" type="button" data-close-dialog aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="ai-builder" id="aiBuilder" hidden>
+          <label class="form-label" for="aiText"><i class="bi bi-stars"></i> Describe your rule in your own words</label>
+          <div class="ai-input-row">
+            <textarea class="form-control" id="aiText" rows="2" maxlength="500" placeholder="When Nifty falls 1.5% in a day, buy 20 HDFC Bank. Hindi, Tamil and Hinglish work too."></textarea>
+            <button class="btn btn-dark ai-button" type="button" id="aiBuildButton"><i class="bi bi-stars"></i> Build</button>
+          </div>
+          <p class="ai-reply" id="aiReply" hidden></p>
+          <div class="ai-or"><span>or start from a template</span></div>
         </div>
         <div class="template-row" id="templateRow" aria-label="Start from a template"></div>
         <div class="mb-3">
