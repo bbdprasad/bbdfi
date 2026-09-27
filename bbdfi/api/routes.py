@@ -5,8 +5,11 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from bbdfi.api.schemas import BacktestIn, OrderIn, ProfilePatch, StrategyIn, StrategyPatch
+from bbdfi.analytics import market as market_analytics
+from bbdfi.analytics.portfolio import analytics as portfolio_analytics
+from bbdfi.api.schemas import BacktestIn, CommandIn, OrderIn, ProfilePatch, StrategyIn, StrategyPatch
 from bbdfi.auth import current_profile
+from bbdfi.commands import parse as parse_command
 from bbdfi.config import Settings, get_settings
 from bbdfi.db import get_session
 from bbdfi.engine.backtest import backtest
@@ -104,6 +107,39 @@ def price_history(symbol: str, days: int = Query(default=90, ge=5, le=750), sess
              "close": bar.close} for bar in reversed(bars)]
 
 
+@router.get("/market/movers")
+def market_movers(session: Session = Depends(get_session)):
+    return market_analytics.movers(session)
+
+
+@router.get("/market/heatmap")
+def market_heatmap(session: Session = Depends(get_session)):
+    return market_analytics.heatmap(session)
+
+
+@router.get("/market/describe")
+def market_describe(symbol: str, session: Session = Depends(get_session)):
+    result = market_analytics.describe(session, symbol)
+    if result is None:
+        raise HTTPException(404, "No data for that instrument")
+    return result
+
+
+@router.get("/market/chart")
+def market_chart(symbol: str, days: int = Query(default=126, ge=5, le=750), indicators: str = "",
+                 session: Session = Depends(get_session)):
+    wanted = {name.strip().lower() for name in indicators.split(",") if name.strip()}
+    result = market_analytics.chart(session, symbol, days, wanted)
+    if result is None:
+        raise HTTPException(404, "No data for that instrument")
+    return result
+
+
+@router.post("/command")
+def command(body: CommandIn, session: Session = Depends(get_session)):
+    return parse_command(body.text, set(session.scalars(select(Instrument.symbol))))
+
+
 @router.get("/leaderboard")
 def get_leaderboard(session: Session = Depends(get_session)):
     return leaderboard(session)
@@ -160,6 +196,11 @@ def account(profile: Profile = Depends(current_profile), session: Session = Depe
     }
 
 
+@router.get("/account/analytics")
+def account_analytics(profile: Profile = Depends(current_profile), session: Session = Depends(get_session)):
+    return portfolio_analytics(session, profile)
+
+
 @router.get("/orders")
 def orders(limit: int = Query(default=50, ge=1, le=500), profile: Profile = Depends(current_profile),
            session: Session = Depends(get_session)):
@@ -175,6 +216,8 @@ def create_order(body: OrderIn, profile: Profile = Depends(current_profile), ses
                           .order_by(DailyBar.date.desc()).limit(1)).first()
     if bar is None:
         raise HTTPException(404, "No price for that instrument")
+    if body.side == "BUY" and body.quantity is None:
+        raise HTTPException(422, "Enter a quantity to buy")
     try:
         order = place_order(session, profile, body.symbol, body.side, body.quantity, bar.close, bar.date,
                             note=f"Filled at {bar.date:%d %b} close")

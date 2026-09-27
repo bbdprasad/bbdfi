@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07090c" />
+    <meta name="description" content="BBDFi Terminal: charts, movers, sector heatmap, portfolio risk and a command line for paper trading on NSE prices." />
+    <title>BBDFi Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="terminal.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="terminal.js" type="module"></script>
+  </head>
+  <body>
+    <div class="term">
+      <header class="term-top">
+        <a class="term-brand" href="./" title="Back to the dashboard">BBDFi<span>TERMINAL</span></a>
+        <form class="term-command" id="commandForm" autocomplete="off">
+          <span class="term-prompt">&gt;</span>
+          <label class="visually-hidden" for="commandInput">Command</label>
+          <input id="commandInput" spellcheck="false" placeholder="Type a symbol or function, e.g. RELIANCE, BUY 10 INFY, MOV, HELP" />
+          <kbd>GO</kbd>
+          <ul class="term-suggest" id="commandSuggest" role="listbox" hidden></ul>
+        </form>
+        <div class="term-status">
+          <span id="dataStatus">--</span>
+          <span id="clock">--:--</span>
+          <button class="term-user" id="userButton" type="button">SIGN IN</button>
+        </div>
+      </header>
+      <div class="term-message" id="commandMessage" role="status" aria-live="polite" hidden></div>
+
+      <div class="term-tape" id="tape" aria-label="Market tape"></div>
+
+      <main class="term-grid">
+        <section class="term-panel term-monitor" aria-label="Monitor">
+          <div class="term-panel-head"><h2>MONITOR</h2><input id="monitorFilter" placeholder="filter" aria-label="Filter monitor" spellcheck="false" /></div>
+          <div class="term-scroll">
+            <table class="term-table" id="monitorTable">
+              <thead><tr><th data-sort="symbol">SYMBOL</th><th data-sort="close" class="num">LAST</th><th data-sort="change_pct" class="num">CHG%</th></tr></thead>
+              <tbody id="monitorRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="term-panel term-main" aria-label="Security">
+          <div class="term-des" id="des"></div>
+          <div class="term-chart-bar">
+            <div class="term-toggles" id="rangeButtons">
+              <button type="button" data-days="21">1M</button><button type="button" data-days="63">3M</button><button type="button" data-days="126" class="on">6M</button><button type="button" data-days="250">1Y</button><button type="button" data-days="500">2Y</button>
+            </div>
+            <div class="term-toggles" id="overlayButtons">
+              <button type="button" data-overlay="sma20" class="on">SMA20</button><button type="button" data-overlay="sma50" class="on">SMA50</button><button type="button" data-overlay="sma200">SMA200</button><button type="button" data-overlay="ema20">EMA20</button><button type="button" data-overlay="bb20">BOLL</button>
+            </div>
+            <div class="term-toggles" id="studyButtons">
+              <button type="button" data-study="rsi14" class="on">RSI</button><button type="button" data-study="macd">MACD</button><button type="button" data-study="">NONE</button>
+            </div>
+          </div>
+          <div class="term-legend" id="chartLegend"></div>
+          <div class="term-chart" id="priceChart"></div>
+          <div class="term-study" id="studyChart"></div>
+        </section>
+
+        <section class="term-side" aria-label="Movers and trade ticket">
+          <div class="term-panel term-movers">
+            <div class="term-panel-head">
+              <h2>MOVERS</h2>
+              <div class="term-toggles" id="moverTabs"><button type="button" data-movers="gainers" class="on">UP</button><button type="button" data-movers="losers">DOWN</button><button type="button" data-movers="active">ACTIVE</button></div>
+            </div>
+            <div class="term-breadth" id="breadth"></div>
+            <div class="term-scroll"><table class="term-table"><tbody id="moverRows"></tbody></table></div>
+          </div>
+
+          <form class="term-panel term-ticket" id="ticket">
+            <div class="term-panel-head"><h2>TICKET</h2><span class="term-muted" id="ticketSymbol">--</span></div>
+            <div class="term-side-switch">
+              <button type="button" data-side="BUY" class="on buy">BUY</button><button type="button" data-side="SELL" class="sell">SELL</button>
+            </div>
+            <label class="term-field"><span>QTY</span><input id="ticketQty" type="number" min="1" step="1" value="1" /></label>
+            <div class="term-kv"><span>PRICE (LAST CLOSE)</span><strong id="ticketPrice">--</strong></div>
+            <div class="term-kv"><span>VALUE</span><strong id="ticketValue">--</strong></div>
+            <div class="term-kv"><span>HELD / CASH</span><strong id="ticketHeld">--</strong></div>
+            <button class="term-submit" type="submit" id="ticketSubmit">PLACE PAPER BUY</button>
+          </form>
+        </section>
+
+        <section class="term-panel term-dock" aria-label="Workspace">
+          <div class="term-panel-head">
+            <div class="term-tabs" id="dockTabs" role="tablist">
+              <button type="button" data-tab="heatmap" class="on">HMAP</button><button type="button" data-tab="portfolio">PORT</button><button type="button" data-tab="orders">BLOT</button><button type="button" data-tab="strategies">RULES</button><button type="button" data-tab="leaderboard">LB</button><button type="button" data-tab="help">HELP</button>
+            </div>
+            <span class="term-muted" id="dockNote"></span>
+          </div>
+          <div class="term-scroll" id="dockBody"></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="login-screen term-login" id="loginScreen" hidden>
+      <form class="login-card" id="loginForm">
+        <h2>Sign in to BBDFi Terminal</h2>
+        <p id="loginHint">Market data is free to browse. Sign in to trade with ₹10 lakh of paper money.</p>
+        <label for="loginInput" id="loginLabel">Email</label>
+        <input id="loginInput" required autocomplete="email" />
+        <p class="term-error" id="loginError" role="alert" hidden></p>
+        <p class="login-sent" id="loginSent" hidden></p>
+        <button class="term-submit" type="submit" id="loginButton">Email me a sign-in link</button>
+        <button class="term-link" type="button" id="loginSkip">Just browse the market</button>
+      </form>
+    </div>
+  </body>
+</html>

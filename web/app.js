@@ -1,22 +1,9 @@
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
-
-const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const shortCurrency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
-const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
-const shortDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-const longDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-const signed = (value, digits = 2) => `${value > 0 ? "+" : ""}${Number(value).toFixed(digits)}%`;
-const tone = (value) => (value > 0 ? "positive" : value < 0 ? "negative" : "");
-const initials = (name) => (name || "?").split(/[\s_]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
-}
+import {
+  $, $$, ApiError, accessToken, api, currency, escapeHtml, hideLogin, initials, longDate, number, setupAuth,
+  shortCurrency, shortDate, showLogin, signOut, signed, tone,
+} from "./common.js";
 
 const state = {
-  config: null,
-  supabase: null,
   status: null,
   quotes: [],
   account: null,
@@ -27,89 +14,9 @@ const state = {
   tradeSide: "BUY",
 };
 
-// ---------------------------------------------------------------- API + auth
-
-const DEV_KEY = "bbdfi-dev-handle";
-
-function readDevHandle() {
-  try { return localStorage.getItem(DEV_KEY); } catch { return null; }
-}
-
-async function accessToken() {
-  if (state.config.auth_mode === "dev") {
-    const handle = readDevHandle();
-    return handle ? `dev:${handle}` : null;
-  }
-  const { data } = await state.supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
-class ApiError extends Error {}
-
-async function api(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
-  if (auth) {
-    const token = await accessToken();
-    if (!token) { showLogin(); throw new ApiError("Sign in required"); }
-    headers.Authorization = `Bearer ${token}`;
-  }
-  const response = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  if (response.status === 401 && auth) { showLogin(); throw new ApiError("Sign in required"); }
-  if (response.status === 204) return null;
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(typeof data.detail === "string" ? data.detail : "Something went wrong");
-  return data;
-}
-
-async function setupAuth() {
-  state.config = await api("/api/config", { auth: false });
-  if (state.config.auth_mode === "supabase") {
-    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-    state.supabase = createClient(state.config.supabase_url, state.config.supabase_anon_key);
-    state.supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") { hideLogin(); refreshAll(); }
-      if (event === "SIGNED_OUT") showLogin();
-    });
-  } else {
-    $("#loginLabel").textContent = "Pick a handle";
-    $("#loginInput").type = "text";
-    $("#loginInput").autocomplete = "username";
-    $("#loginInput").placeholder = "e.g. nifty_ninja";
-    $("#loginInput").pattern = "[a-z0-9_]{3,20}";
-    $("#loginInput").title = "3 to 20 lowercase letters, digits or _";
-    $("#loginButton").textContent = "Start paper trading";
-    $("#loginHint").textContent = "Local dev mode: no password needed. Connect Supabase to require real sign-in.";
-  }
-}
-
-function showLogin() { $("#loginScreen").hidden = false; }
-function hideLogin() { $("#loginScreen").hidden = true; }
-
-$("#loginForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const value = $("#loginInput").value.trim();
-  const errorBox = $("#loginError");
-  errorBox.hidden = true;
-  if (state.config.auth_mode === "dev") {
-    try { localStorage.setItem(DEV_KEY, value.toLowerCase()); } catch { /* storage blocked */ }
-    hideLogin();
-    refreshAll();
-    return;
-  }
-  const { error } = await state.supabase.auth.signInWithOtp({ email: value, options: { emailRedirectTo: window.location.origin } });
-  if (error) { errorBox.textContent = error.message; errorBox.hidden = false; return; }
-  $("#loginSent").textContent = `Check ${value} for your sign-in link.`;
-  $("#loginSent").hidden = false;
-});
-
 $("#signOutButton").addEventListener("click", async () => {
-  if (state.config.auth_mode === "dev") {
-    try { localStorage.removeItem(DEV_KEY); } catch { /* storage blocked */ }
-  } else {
-    await state.supabase.auth.signOut();
-  }
   $("#profileDialog").close();
-  showLogin();
+  await signOut();
 });
 
 // ---------------------------------------------------------------- data
@@ -734,7 +641,10 @@ setInterval(updateClock, 30000);
 // Prices change once a day and strategies fill after the evening job, so a light poll is enough.
 setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, 60000);
 
-setupAuth().then(refreshAll).catch((error) => {
+setupAuth({ onSignedIn: refreshAll }).then(refreshAll).then(() => {
+  // The terminal's RULE command links here with ?build=1 to open the strategy builder.
+  if (new URLSearchParams(window.location.search).has("build") && state.account) openStrategyBuilder();
+}).catch((error) => {
   console.error(error);
   showToast("Could not reach the BBDFi server.");
 });

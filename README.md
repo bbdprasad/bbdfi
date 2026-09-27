@@ -15,7 +15,8 @@ pip install -r requirements-dev.txt
 uvicorn bbdfi.main:app --reload
 ```
 
-Open <http://localhost:8000>. With no settings, the app uses a local SQLite file, loads clearly labelled
+Open <http://localhost:8000> for the dashboard, or <http://localhost:8000/terminal.html> for the
+Bloomberg-style terminal (type `HELP` in its command line). With no settings, the app uses a local SQLite file, loads clearly labelled
 sample prices, and lets you sign in with just a handle. Open a second browser with another handle to see
 the leaderboard move.
 
@@ -68,8 +69,10 @@ a machine in India or switch to a paid data source.
 | `bbdfi/engine/runner.py` | Daily run: evaluates active strategies once per market day and snapshots equity |
 | `bbdfi/engine/backtest.py` | Replays a rule over recent history for the "Preview" button |
 | `bbdfi/leaderboard.py` | 7-day return ranking |
+| `bbdfi/analytics/` | Indicators (SMA, EMA, Bollinger, RSI, MACD), movers, breadth, sector heatmap, portfolio risk |
+| `bbdfi/commands.py` | Parses terminal commands like `RELIANCE`, `BUY 10 INFY`, `MOV` |
 | `bbdfi/api/routes.py` | JSON API used by the front end |
-| `web/` | Dashboard and public leaderboard page |
+| `web/` | Dashboard, terminal and public leaderboard page (`common.js` holds shared API and sign-in code) |
 
 ## Rules and limits
 
@@ -79,6 +82,10 @@ a machine in India or switch to a paid data source.
 - A new or re-enabled strategy starts from the next market close, so it never trades on prices that
   were already known when it was switched on.
 - Every account starts with ₹10,00,000 of paper cash.
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the path toward a Bloomberg-style terminal.
 
 ## Not built yet
 
