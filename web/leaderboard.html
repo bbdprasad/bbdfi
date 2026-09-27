@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="This week's top paper traders on BBDFi, ranked by 7-day simulated return on NSE prices." />
+    <title>BBDFi | Weekly Leaderboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="styles.css" rel="stylesheet" />
+    <style>
+      .board-page { margin: 0 auto; max-width: 720px; padding: 40px 16px; }
+      .board-page .brand { color: var(--pine); margin-bottom: 28px; }
+      .board-page .panel { padding: 18px 20px; }
+      .board-table { border-collapse: collapse; font-size: 13px; width: 100%; }
+      .board-table th { color: #8c9992; font-size: 10px; letter-spacing: .08em; padding: 8px 6px; text-align: left; }
+      .board-table td { border-top: 1px solid #edf1ee; padding: 11px 6px; }
+      .board-table .num { text-align: right; }
+      .board-table tr:nth-child(1) .rank { color: #bf873b; font-weight: 700; }
+      .board-name small { color: var(--muted); display: block; font-size: 11px; }
+      .board-cta { align-items: center; background: var(--pine); border-radius: 6px; color: white; display: flex; gap: 12px; justify-content: space-between; margin-top: 16px; padding: 16px 20px; }
+      .board-cta a { background: #d4f0df; border-radius: 5px; color: var(--pine); font-weight: 600; padding: 8px 14px; text-decoration: none; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <main class="board-page">
+      <a class="brand" href="./"><span class="brand-mark"><i class="bi bi-graph-up-arrow"></i></span><span>bbdfi<span class="brand-period">.</span></span></a>
+      <div class="eyebrow"><span class="eyebrow-line"></span><span>WEEKLY LEADERBOARD</span></div>
+      <h1>Who's winning <span>this week.</span></h1>
+      <p class="welcome-subtitle" id="boardSubtitle">Ranked by 7-day paper return on NSE closing prices.</p>
+      <section class="panel" style="margin-top: 20px;">
+        <table class="board-table">
+          <thead><tr><th>#</th><th>TRADER</th><th class="num">TRADES</th><th class="num">7-DAY RETURN</th></tr></thead>
+          <tbody id="boardRows"><tr><td colspan="4">Loading...</td></tr></tbody>
+        </table>
+      </section>
+      <div class="board-cta"><span>Think you can beat them? Test your own rules with ₹10 lakh of paper money.</span><a href="./">Start free</a></div>
+    </main>
+    <script type="module">
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const board = await fetch("/api/leaderboard").then((response) => response.json());
+      if (board.as_of) {
+        const day = new Date(`${board.as_of}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+        document.querySelector("#boardSubtitle").textContent = `Ranked by 7-day paper return, up to the NSE close on ${day}.`;
+      }
+      document.querySelector("#boardRows").innerHTML = board.entries.length
+        ? board.entries.map((entry) => `<tr>
+            <td class="rank">${entry.rank}</td>
+            <td class="board-name">${escapeHtml(entry.display_name)}<small>@${escapeHtml(entry.handle)}${entry.new ? " · new this week" : ""}</small></td>
+            <td class="num">${entry.trades}</td>
+            <td class="num ${entry.return_pct > 0 ? "positive" : entry.return_pct < 0 ? "negative" : ""}"><strong>${entry.return_pct > 0 ? "+" : ""}${entry.return_pct.toFixed(2)}%</strong></td>
+          </tr>`).join("")
+        : '<tr><td colspan="4">No one is ranked yet. Be the first.</td></tr>';
+    </script>
+  </body>
+</html>

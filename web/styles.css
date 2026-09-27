@@ -275,3 +275,59 @@ h2 { font-size: 16px; line-height: 1.35; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+/* ---- interactive app additions ---- */
+.watchlist-list { max-height: 330px; overflow-y: auto; padding-right: 4px; }
+.watch-row { cursor: pointer; }
+.watch-row.selected { background: #f1f7f3; }
+.watch-row:focus-visible { outline: 2px solid #9ad5b2; outline-offset: -2px; }
+.watch-right { align-items: center; display: flex; gap: 6px; text-align: right; }
+.watch-trade { height: 26px; width: 26px; }
+.quote-down { color: var(--red); font-size: 11px; font-weight: 600; }
+.quote-down small { color: #8d9a93; font-weight: 500; }
+.chart-wrap { position: relative; }
+.chart-tooltip { background: var(--pine); border-radius: 5px; color: white; display: grid; font-size: 10px; gap: 1px; padding: 6px 9px; pointer-events: none; position: absolute; top: 4px; transform: translateX(-50%); white-space: nowrap; }
+.chart-tooltip strong { font-family: var(--font-display); font-size: 12px; }
+.chart-tooltip .positive { color: #9ad5b2; }
+.chart-tooltip .negative { color: #f3b1a9; }
+.chart-toolbar { gap: 8px; flex-wrap: wrap; }
+.strategy-row { grid-template-columns: 34px minmax(0, 1fr) auto auto; }
+.strategy-meta { color: #9aa69f; font-size: 9px; margin-top: 3px; }
+.leader-row.is-me { background: #f1f7f3; border-radius: 4px; }
+.leader-return.negative { color: var(--red); }
+.order-status.rejected { color: var(--red); }
+.activity-table td small { color: inherit; opacity: .8; }
+.activity-table .text-button { padding: 0; }
+
+.strategy-dialog { width: min(560px, calc(100vw - 32px)); }
+.template-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.template-chip { background: var(--mint); border: 1px solid #cfe7da; border-radius: 999px; color: var(--pine); font-size: 11px; font-weight: 600; padding: 5px 11px; }
+.template-chip:hover { background: #cfeadb; }
+.rule-fields { display: grid; gap: 10px 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 10px; }
+.rule-fields .form-label { color: #62716a; font-size: 11px; margin-bottom: 4px; }
+.rule-sentence { background: #f5f8f6; border-left: 3px solid #4d9b71; border-radius: 4px; color: var(--ink); font-size: 12px; margin: 4px 0 12px; padding: 8px 10px; }
+.backtest-box { border: 1px solid var(--line); border-radius: 6px; font-size: 11px; margin-bottom: 12px; padding: 11px 12px; }
+.backtest-loading { color: var(--muted); }
+.backtest-stats { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); }
+.backtest-stats span { color: var(--muted); display: block; font-size: 10px; }
+.backtest-stats strong { font-family: var(--font-display); font-size: 17px; }
+.backtest-curve { display: block; height: 46px; margin: 8px 0 4px; width: 100%; }
+.backtest-range { color: var(--muted); font-size: 10px; }
+.backtest-trades { list-style: none; margin: 8px 0 0; padding: 0; }
+.backtest-trades li { align-items: center; border-top: 1px solid #edf1ee; display: flex; gap: 6px; padding: 4px 0; }
+.backtest-trades small { color: var(--muted); margin-left: auto; }
+.dialog-actions { display: flex; gap: 8px; justify-content: space-between; }
+.dialog-actions .btn { font-size: 12px; }
+.dialog-actions .submit-trade { flex: 1; }
+
+.login-screen { align-items: center; background: rgba(24, 59, 50, .82); display: flex; inset: 0; justify-content: center; padding: 16px; position: fixed; z-index: 20; }
+.login-screen[hidden] { display: none; }
+.login-card { background: var(--paper); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.25); display: grid; gap: 8px; max-width: 380px; padding: 28px 26px; width: 100%; }
+.login-card h2 { font-size: 21px; margin-top: 6px; }
+.login-card .form-label { font-size: 12px; margin: 6px 0 0; }
+.login-card .submit-trade { margin-top: 6px; padding: 11px; }
+.login-sent { background: var(--mint); border-radius: 5px; color: var(--pine); font-size: 12px; margin: 0; padding: 8px 10px; }
+.login-link { color: var(--green); font-size: 12px; text-align: center; }
+
+@media (max-width: 620px) {
+  .dialog-actions { flex-direction: column-reverse; }
+}
